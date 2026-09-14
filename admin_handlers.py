@@ -8,6 +8,16 @@ from config import ADMIN_ID
 
 admin_router = Router()
 
+# Foydalanuvchi asosiy menyusi klaviaturasi (Loyihangizdagi nomga qarab moslashtiring)
+user_main_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="🛒 Buyurtma berish"), KeyboardButton(text="👤 Kabinet")],
+        [KeyboardButton(text="💰 Balans to'ldirish"), KeyboardButton(text="📊 Xizmatlar")],
+        [KeyboardButton(text="🛠 Admin Panel")]
+    ],
+    resize_keyboard=True
+)
+
 # Admin panel klaviaturasi
 admin_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -44,23 +54,24 @@ class AdminStates(StatesGroup):
 def is_admin(user_id: int) -> bool:
     return user_id == ADMIN_ID
 
-# ⬅️ Bosh menyu (Har qanday qotib qolgan holatni (state) darhol tozalaydi)
+# ⬅️ Bosh menyu (Foydalanuvchining asosiy menyusiga qaytaradi va barcha state'larni tozalaydi)
 @admin_router.message(State("*"), F.text == "⬅️ Bosh menyu")
 async def back_to_main_menu(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
     await state.clear()
     await message.answer(
-        "🛠 <b>Admin Panel bosh menyusi:</b>",
-        reply_markup=admin_keyboard,
+        "🏠 <b>Asosiy menyudasiz:</b>",
+        reply_markup=user_main_keyboard,
         parse_mode="HTML"
     )
 
 # Admin panel menyusini chiqarish
-@admin_router.message(F.text.in_({"🛠 Admin Panel", "🧑‍💻 Admin Panel", "👨‍💻 Admin Panel", "🔑 Admin Panel", "Admin Panel"}))
-async def open_admin_panel(message: Message):
+@admin_router.message(State("*"), F.text.in_({"🛠 Admin Panel", "🧑‍💻 Admin Panel", "👨‍💻 Admin Panel", "🔑 Admin Panel", "Admin Panel"}))
+async def open_admin_panel(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
+    await state.clear()
     await message.answer(
         "🛠 <b>Kengaytirilgan Admin Panel:</b>",
         reply_markup=admin_keyboard,
@@ -68,10 +79,11 @@ async def open_admin_panel(message: Message):
     )
 
 # 1. 📊 Bot statistikasi
-@admin_router.message(F.text == "📊 Bot statistikasi")
-async def admin_stats(message: Message):
+@admin_router.message(State("*"), F.text == "📊 Bot statistikasi")
+async def admin_stats(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
+    await state.clear()
     users_count = db.get_total_users_count()
     total_balance = db.get_total_users_balance()
     orders_count = db.get_total_orders_count()
@@ -85,7 +97,7 @@ async def admin_stats(message: Message):
     await message.answer(text, parse_mode="HTML")
 
 # 2. 🔍 User Qidirish
-@admin_router.message(F.text == "🔍 User Qidirish")
+@admin_router.message(State("*"), F.text == "🔍 User Qidirish")
 async def start_user_search(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -110,7 +122,7 @@ async def process_user_search(message: Message, state: FSMContext):
     await state.clear()
 
 # 3. ➕ Balans qo'shish
-@admin_router.message(F.text == "➕ Balans qo'shish")
+@admin_router.message(State("*"), F.text == "➕ Balans qo'shish")
 async def start_add_bal(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -146,7 +158,7 @@ async def process_add_bal_amount(message: Message, state: FSMContext):
     await state.clear()
 
 # 4. ➖ Balans ayirish
-@admin_router.message(F.text == "➖ Balans ayirish")
+@admin_router.message(State("*"), F.text == "➖ Balans ayirish")
 async def start_deduct_bal(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -178,7 +190,7 @@ async def process_deduct_bal_amount(message: Message, state: FSMContext):
     await state.clear()
 
 # 5. 🚫 Userni Bloklash
-@admin_router.message(F.text == "🚫 Userni Bloklash")
+@admin_router.message(State("*"), F.text == "🚫 Userni Bloklash")
 async def ban_user_start(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -196,10 +208,11 @@ async def process_ban_user(message: Message, state: FSMContext):
     await state.clear()
 
 # 6. 💳 API Balans
-@admin_router.message(F.text == "💳 API Balans")
-async def check_api_balance(message: Message):
+@admin_router.message(State("*"), F.text == "💳 API Balans")
+async def check_api_balance(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
+    await state.clear()
     api_url = db.get_setting("smm_api_url")
     api_key = db.get_setting("smm_api_key")
     
@@ -212,16 +225,17 @@ async def check_api_balance(message: Message):
         await message.answer(f"❌ API balansni olishda xatolik: {e}")
 
 # 7. ⚙️ API Sozlamalari
-@admin_router.message(F.text == "⚙️ API Sozlamalari")
-async def api_settings_menu(message: Message):
+@admin_router.message(State("*"), F.text == "⚙️ API Sozlamalari")
+async def api_settings_menu(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
+    await state.clear()
     url = db.get_setting("smm_api_url")
     key = db.get_setting("smm_api_key")
     await message.answer(f"⚙️ <b>Hozirgi API URL:</b> <code>{url}</code>\n🔑 <b>API Key:</b> <code>{key}</code>", parse_mode="HTML")
 
 # 8. 📈 Ustama foizi (Natsenka)
-@admin_router.message(F.text == "📈 Ustama Foizi (Natsenka)")
+@admin_router.message(State("*"), F.text == "📈 Ustama Foizi (Natsenka)")
 async def start_set_markup(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -236,7 +250,7 @@ async def process_set_markup(message: Message, state: FSMContext):
     await state.clear()
 
 # 9. 💳 Karta Sozlamalari
-@admin_router.message(F.text == "💳 Karta Sozlamalari")
+@admin_router.message(State("*"), F.text == "💳 Karta Sozlamalari")
 async def set_card_details(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -256,7 +270,7 @@ async def process_card_name(message: Message, state: FSMContext):
     await state.clear()
 
 # 10. 📢 Xabar Tarqatish
-@admin_router.message(F.text == "📢 Xabar Tarqatish")
+@admin_router.message(State("*"), F.text == "📢 Xabar Tarqatish")
 async def start_broadcast(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -278,7 +292,7 @@ async def process_broadcast(message: Message, state: FSMContext):
     await state.clear()
 
 # 11. 🎁 Promokod Yaratish
-@admin_router.message(F.text == "🎁 Promokod Yaratish")
+@admin_router.message(State("*"), F.text == "🎁 Promokod Yaratish")
 async def start_create_promo(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -307,7 +321,7 @@ async def process_promo_amount(message: Message, state: FSMContext):
     await state.clear()
 
 # 12. 🔎 Buyurtmani tekshirish
-@admin_router.message(F.text == "🔎 Buyurtmani tekshirish")
+@admin_router.message(State("*"), F.text == "🔎 Buyurtmani tekshirish")
 async def start_check_order(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -330,7 +344,7 @@ async def process_check_order(message: Message, state: FSMContext):
     await state.clear()
 
 # 13. 💸 Pulni qaytarish (Refund)
-@admin_router.message(F.text == "💸 Pulni qaytarish (Refund)")
+@admin_router.message(State("*"), F.text == "💸 Pulni qaytarish (Refund)")
 async def start_refund(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
@@ -358,10 +372,11 @@ async def process_refund(message: Message, state: FSMContext):
         await message.answer(f"❌ Xato format. Namuna: <code>6911619468 5000</code>\nQaytadan kiriting:", parse_mode="HTML")
 
 # 14. 🛠 Texnik rejim
-@admin_router.message(F.text == "🛠 Texnik rejim")
-async def toggle_maintenance(message: Message):
+@admin_router.message(State("*"), F.text == "🛠 Texnik rejim")
+async def toggle_maintenance(message: Message, state: FSMContext):
     if not is_admin(message.from_user.id): 
         return
+    await state.clear()
     current = db.get_setting("maintenance_mode") or "off"
     new_status = "on" if current == "off" else "off"
     db.set_setting("maintenance_mode", new_status)
